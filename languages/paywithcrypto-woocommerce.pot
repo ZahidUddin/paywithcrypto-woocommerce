@@ -1,0 +1,26 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PayWithCrypto for WooCommerce 1.0.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "PayWithCrypto"
+msgstr ""
+
+msgid "Pay with Crypto"
+msgstr ""
+
+msgid "Pay securely using crypto wallet transfer."
+msgstr ""
+
+msgid "Awaiting Payment"
+msgstr ""
+
+msgid "Paid"
+msgstr ""
+
+msgid "Failed"
+msgstr ""
+
+msgid "Expired"
+msgstr ""
