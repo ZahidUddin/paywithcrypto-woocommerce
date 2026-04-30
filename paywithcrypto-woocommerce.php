@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: PayWithCrypto for WooCommerce
- * Plugin URI: https://paywithcrypto.vip
- * Description: WooCommerce payment gateway for PayWithCrypto crypto payments.
+ * Plugin URI: https://zahiduddin.com/
+ * Description: WooCommerce payment gateway integration for PayWithCrypto / PWC crypto wallet transfer payments.
  * Version: 1.0.0
- * Author: PayWithCrypto
- * Author URI: https://paywithcrypto.vip
+ * Author: Zahid Uddin
+ * Author URI: https://zahiduddin.com/
  * Text Domain: paywithcrypto-woocommerce
  * Domain Path: /languages
  * Requires Plugins: woocommerce
@@ -130,8 +130,7 @@ function pwc_init_plugin() {
 	/**
 	 * Fires after the basic plugin is fully loaded.
 	 *
-	 * Pro add-ons can hook here to register additional gateways/features
-	 * without modifying the free plugin.
+	 * Extension plugins can hook here without modifying the free plugin.
 	 */
 	do_action( 'pwc_plugin_loaded' );
 }

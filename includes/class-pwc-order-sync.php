@@ -77,6 +77,13 @@ class PWC_Order_Sync {
 			return new WP_Error( 'pwc_missing_status', __( 'PayWithCrypto status is missing.', 'paywithcrypto-woocommerce' ) );
 		}
 
+		$validation = self::validate_status_data_matches_order( $order, $data, $status );
+		if ( is_wp_error( $validation ) ) {
+			$order->add_order_note( $validation->get_error_message() );
+			$order->save();
+			return $validation;
+		}
+
 		$previous_status = self::normalize_status( $order->get_meta( '_pwc_status', true ) );
 		$previous_tx     = sanitize_text_field( (string) $order->get_meta( '_pwc_tx_hash', true ) );
 		$tx_hash         = self::extract_transaction_id( $data );
@@ -380,6 +387,69 @@ class PWC_Order_Sync {
 	}
 
 	/**
+	 * Validate trusted PWC status data against the WooCommerce order before applying it.
+	 *
+	 * @param WC_Order            $order Order.
+	 * @param array<string,mixed> $data Status data.
+	 * @param string              $status Normalized PWC status.
+	 * @return true|WP_Error
+	 */
+	private static function validate_status_data_matches_order( WC_Order $order, array $data, $status ) {
+		$payment_id        = self::first_non_empty( $data, array( 'payment_id', 'order_id', 'id' ) );
+		$stored_payment_id = self::get_pwc_payment_id( $order );
+
+		if ( '' !== $payment_id && '' !== $stored_payment_id && ! hash_equals( $stored_payment_id, sanitize_text_field( $payment_id ) ) ) {
+			return new WP_Error( 'pwc_status_payment_id_mismatch', __( 'PayWithCrypto status verification failed: payment id does not match this WooCommerce order.', 'paywithcrypto-woocommerce' ) );
+		}
+
+		$external_id        = self::first_non_empty( $data, array( 'external_id', 'merchant_order_id' ) );
+		$stored_external_id = sanitize_text_field( (string) $order->get_meta( '_pwc_external_id', true ) );
+		if ( '' !== $external_id && '' !== $stored_external_id && ! hash_equals( $stored_external_id, sanitize_text_field( $external_id ) ) ) {
+			return new WP_Error( 'pwc_status_external_id_mismatch', __( 'PayWithCrypto status verification failed: external order id does not match this WooCommerce order.', 'paywithcrypto-woocommerce' ) );
+		}
+
+		$fiat_currency = strtoupper( sanitize_text_field( self::first_non_empty( $data, array( 'fiat', 'fiat_currency' ) ) ) );
+		if ( '' !== $fiat_currency && strtoupper( $order->get_currency() ) !== $fiat_currency ) {
+			return new WP_Error( 'pwc_status_currency_mismatch', __( 'PayWithCrypto status verification failed: fiat currency does not match this WooCommerce order.', 'paywithcrypto-woocommerce' ) );
+		}
+
+		$amount_fiat = self::first_non_empty( $data, array( 'amount_fiat', 'amount' ) );
+		if ( '' !== $amount_fiat ) {
+			$order_total = wc_format_decimal( $order->get_total(), wc_get_price_decimals() );
+			$pwc_total   = wc_format_decimal( $amount_fiat, wc_get_price_decimals() );
+
+			if ( $order_total !== $pwc_total ) {
+				return new WP_Error( 'pwc_status_amount_mismatch', __( 'PayWithCrypto status verification failed: payment amount does not match this WooCommerce order.', 'paywithcrypto-woocommerce' ) );
+			}
+		}
+
+		$expected_crypto = sanitize_text_field( (string) $order->get_meta( '_pwc_crypto', true ) );
+		if ( '' === $expected_crypto ) {
+			$expected_crypto = sanitize_text_field( (string) pwc_get_gateway_setting( 'crypto', '' ) );
+		}
+
+		$crypto = sanitize_text_field( self::first_non_empty( $data, array( 'crypto' ) ) );
+		if ( '' !== $crypto && '' !== $expected_crypto && strtoupper( $expected_crypto ) !== strtoupper( $crypto ) ) {
+			return new WP_Error( 'pwc_status_crypto_mismatch', __( 'PayWithCrypto status verification failed: crypto token does not match this WooCommerce order.', 'paywithcrypto-woocommerce' ) );
+		}
+
+		if ( 'PAID' === $status ) {
+			$remaining = self::first_non_empty( $data, array( 'remaining_amount' ) );
+			if ( '' !== $remaining && (float) $remaining > 0 ) {
+				return new WP_Error( 'pwc_status_remaining_amount', __( 'PayWithCrypto status verification failed: payment still has a remaining amount.', 'paywithcrypto-woocommerce' ) );
+			}
+
+			$amount_crypto    = self::first_non_empty( $data, array( 'amount_crypto', 'crypto_amount' ) );
+			$confirmed_amount = self::first_non_empty( $data, array( 'confirmed_amount', 'paid_amount' ) );
+			if ( '' !== $amount_crypto && '' !== $confirmed_amount && (float) $confirmed_amount < (float) $amount_crypto ) {
+				return new WP_Error( 'pwc_status_confirmed_amount_mismatch', __( 'PayWithCrypto status verification failed: confirmed crypto amount is lower than the required amount.', 'paywithcrypto-woocommerce' ) );
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Build a safe order note.
 	 *
 	 * @param string $base Base message.
@@ -538,18 +608,6 @@ if ( ! function_exists( 'pwc_sync_pwc_payment_status' ) ) {
 	 * @return array<string,mixed>|WP_Error
 	 */
 	function pwc_sync_pwc_payment_status( $wc_order_id ) {
-		return PWC_Order_Sync::sync_pwc_payment_status( $wc_order_id );
-	}
-}
-
-if ( ! function_exists( 'sync_pwc_payment_status' ) ) {
-	/**
-	 * Requested reusable backend sync function.
-	 *
-	 * @param int $wc_order_id WooCommerce order id.
-	 * @return array<string,mixed>|WP_Error
-	 */
-	function sync_pwc_payment_status( $wc_order_id ) {
 		return PWC_Order_Sync::sync_pwc_payment_status( $wc_order_id );
 	}
 }

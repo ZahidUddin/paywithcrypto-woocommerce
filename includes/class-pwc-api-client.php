@@ -86,7 +86,7 @@ class PWC_API_Client {
 	public function get_payment_status( $pwc_payment_id ) {
 		$pwc_payment_id = rawurlencode( sanitize_text_field( (string) $pwc_payment_id ) );
 
-		return $this->request( 'GET', '/api/v1/payment/' . $pwc_payment_id, array(), false );
+		return $this->request( 'GET', '/api/v1/payment/' . $pwc_payment_id, array(), true );
 	}
 
 	/**
@@ -543,7 +543,7 @@ class PWC_API_Client {
 		}
 
 		$logger = wc_get_logger();
-		$logger->debug( sanitize_text_field( $message ) . ' ' . wc_print_r( $this->redact_context( $context ), true ), array( 'source' => 'paywithcrypto' ) );
+		$logger->debug( sanitize_text_field( $message ) . ' ' . wp_json_encode( $this->redact_context( $context ) ), array( 'source' => 'paywithcrypto' ) );
 	}
 
 	/**

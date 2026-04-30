@@ -21,6 +21,52 @@ class PWC_Admin {
 		add_action( 'admin_post_pwc_sync_order', array( __CLASS__, 'handle_manual_sync' ) );
 		add_action( 'wp_ajax_pwc_test_connection', array( __CLASS__, 'handle_test_connection' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'admin_notices' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+	}
+
+	/**
+	 * Enqueue admin assets only on the gateway settings screen.
+	 *
+	 * @param string $hook_suffix Current admin page hook.
+	 */
+	public static function enqueue_admin_assets( $hook_suffix ) {
+		if ( 'woocommerce_page_wc-settings' !== $hook_suffix ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only screen routing.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only screen routing.
+		$section = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : '';
+
+		if ( 'checkout' !== $tab || PWC_GATEWAY_ID !== $section ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'pwc-admin',
+			PWC_PLUGIN_URL . 'assets/js/paywithcrypto-admin.js',
+			array( 'jquery' ),
+			PWC_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'pwc-admin',
+			'PWCAdmin',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'pwc_test_connection' ),
+				'i18n'    => array(
+					'testing'        => __( 'Testing...', 'paywithcrypto-woocommerce' ),
+					'testingMessage' => __( 'Testing PayWithCrypto from this server...', 'paywithcrypto-woocommerce' ),
+					'connected'      => __( 'Connected', 'paywithcrypto-woocommerce' ),
+					'failed'         => __( 'Failed', 'paywithcrypto-woocommerce' ),
+					'noDetails'      => __( 'No response details were returned.', 'paywithcrypto-woocommerce' ),
+					'requestFailed'  => __( 'The connection test request failed in WordPress admin.', 'paywithcrypto-woocommerce' ),
+				),
+			)
+		);
 	}
 
 	/**

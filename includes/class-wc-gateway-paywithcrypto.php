@@ -310,7 +310,6 @@ class WC_Gateway_PayWithCrypto extends WC_Payment_Gateway {
 	private function render_connection_test_box( PWC_API_Client $client ) {
 		$last_result = get_option( 'pwc_last_connection_test', array() );
 		$last_result = is_array( $last_result ) ? $last_result : array();
-		$nonce       = wp_create_nonce( 'pwc_test_connection' );
 		$endpoint    = $client->get_base_url() . '/api/v1/orders';
 		$is_ok       = ! empty( $last_result['ok'] );
 		$verdict     = isset( $last_result['verdict'] ) ? sanitize_key( (string) $last_result['verdict'] ) : 'not_tested';
@@ -343,7 +342,7 @@ class WC_Gateway_PayWithCrypto extends WC_Payment_Gateway {
 				<span data-pwc-test-field="checked_at"><?php echo esc_html( $checked_at ); ?></span>
 			</p>
 			<p>
-				<button type="button" class="button" id="pwc-test-connection" data-nonce="<?php echo esc_attr( $nonce ); ?>">
+				<button type="button" class="button" id="pwc-test-connection">
 					<?php esc_html_e( 'Test PayWithCrypto Connection', 'paywithcrypto-woocommerce' ); ?>
 				</button>
 				<span class="spinner" id="pwc-test-connection-spinner" style="float:none;margin-top:0;"></span>
@@ -352,47 +351,6 @@ class WC_Gateway_PayWithCrypto extends WC_Payment_Gateway {
 				<?php esc_html_e( 'This runs from your server. It signs a deliberately invalid create-order probe so PWC can authenticate the request without creating a real payment order.', 'paywithcrypto-woocommerce' ); ?>
 			</p>
 		</div>
-		<script>
-			(function($) {
-				$('#pwc-test-connection').on('click', function() {
-					var button = $(this);
-					var spinner = $('#pwc-test-connection-spinner');
-					var status = $('#pwc-connection-status');
-					var message = $('#pwc-connection-message');
-					var details = $('#pwc-connection-details');
-
-					button.prop('disabled', true);
-					spinner.addClass('is-active');
-					status.text('<?php echo esc_js( __( 'Testing...', 'paywithcrypto-woocommerce' ) ); ?>').css('color', '#996800');
-					message.text('<?php echo esc_js( __( 'Testing PayWithCrypto from this server...', 'paywithcrypto-woocommerce' ) ); ?>');
-
-					$.post(ajaxurl, {
-						action: 'pwc_test_connection',
-						nonce: button.data('nonce')
-					}).done(function(response) {
-						var data = response && response.data ? response.data : {};
-						var ok = !!(response && response.success && data.ok);
-
-						status.text(ok ? '<?php echo esc_js( __( 'Connected', 'paywithcrypto-woocommerce' ) ); ?>' : '<?php echo esc_js( __( 'Failed', 'paywithcrypto-woocommerce' ) ); ?>').css('color', ok ? '#008a20' : '#b32d2e');
-						message.text(data.message || '<?php echo esc_js( __( 'No response details were returned.', 'paywithcrypto-woocommerce' ) ); ?>');
-						$('[data-pwc-test-field="verdict"]').text(data.verdict || 'unknown');
-						$('[data-pwc-test-field="http_code"]').text(data.http_code || '0');
-						$('[data-pwc-test-field="app_key"]').text(data.app_key || '');
-						$('[data-pwc-test-field="checked_at"]').text(data.checked_at || '');
-						if (data.endpoint) {
-							$('#pwc-connection-endpoint').text(data.endpoint);
-						}
-						details.show();
-					}).fail(function(xhr) {
-						status.text('<?php echo esc_js( __( 'Failed', 'paywithcrypto-woocommerce' ) ); ?>').css('color', '#b32d2e');
-						message.text(xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ? xhr.responseJSON.data.message : '<?php echo esc_js( __( 'The connection test request failed in WordPress admin.', 'paywithcrypto-woocommerce' ) ); ?>');
-					}).always(function() {
-						button.prop('disabled', false);
-						spinner.removeClass('is-active');
-					});
-				});
-			})(jQuery);
-		</script>
 		<?php
 	}
 
